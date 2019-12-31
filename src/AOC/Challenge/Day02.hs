@@ -22,17 +22,20 @@
 --     will recommend what should go in place of the underscores.
 
 module AOC.Challenge.Day02 (
-    -- day02a
+    day02a
   -- , day02b
   ) where
 
 import           AOC.Prelude
 
-day02a :: _ :~> _
+filterByCount :: [String] -> Int -> [String]
+filterByCount boxes n = filter (\id -> any (==n) $ map length $ group $ sort id) boxes
+
+day02a :: [String] :~> Int
 day02a = MkSol
-    { sParse = Just
+    { sParse = Just . lines
     , sShow  = show
-    , sSolve = Just
+    , sSolve = \boxes -> Just $ product $ map length $ map (filterByCount boxes) [2,3]
     }
 
 day02b :: _ :~> _
