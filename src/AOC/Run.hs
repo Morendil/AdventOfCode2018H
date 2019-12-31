@@ -58,6 +58,8 @@ import qualified Data.Text.IO             as T
 import qualified System.Console.ANSI      as ANSI
 import qualified System.Console.Haskeline as H
 
+import Debug.Trace
+
 -- | Specification of parts to test and run
 data TestSpec = TSAll
               | TSDayAll  { _tsDay  :: Day           }
