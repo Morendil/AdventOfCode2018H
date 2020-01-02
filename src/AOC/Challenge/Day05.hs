@@ -4,40 +4,37 @@
 -- |
 -- Module      : AOC.Challenge.Day05
 -- License     : BSD3
---
--- Stability   : experimental
--- Portability : non-portable
---
--- Day 5.  See "AOC.Solver" for the types used in this module!
---
--- After completing the challenge, it is recommended to:
---
--- *   Replace "AOC.Prelude" imports to specific modules (with explicit
---     imports) for readability.
--- *   Remove the @-Wno-unused-imports@ and @-Wno-unused-top-binds@
---     pragmas.
--- *   Replace the partial type signatures underscores in the solution
---     types @_ :~> _@ with the actual types of inputs and outputs of the
---     solution.  You can delete the type signatures completely and GHC
---     will recommend what should go in place of the underscores.
 
 module AOC.Challenge.Day05 (
-    -- day05a
-  -- , day05b
+    day05a
+  , day05b
+  , react
+  , reactOne
   ) where
 
-import           AOC.Prelude
+import AOC.Prelude
+import Data.List.HT
+import Debug.Trace
 
-day05a :: _ :~> _
+react :: String -> String
+react = snd . last . takeUntil (\(a,b) -> length a == length b) . oneAndNext . iterate reactOne
+
+reactOne :: String -> String
+reactOne [] = []
+reactOne [x] = [x]
+reactOne (x:y:rest) | toLower x == toLower y && x /= y = (reactOne rest)
+reactOne (x:rest) = x:(reactOne rest)
+
+day05a :: String :~> Int
 day05a = MkSol
     { sParse = Just
     , sShow  = show
-    , sSolve = Just
+    , sSolve = Just . length . react
     }
 
-day05b :: _ :~> _
+day05b :: String :~> Int
 day05b = MkSol
     { sParse = Just
     , sShow  = show
-    , sSolve = Just
+    , sSolve = Just . length
     }
