@@ -4,40 +4,57 @@
 -- |
 -- Module      : AOC.Challenge.Day06
 -- License     : BSD3
---
--- Stability   : experimental
--- Portability : non-portable
---
--- Day 6.  See "AOC.Solver" for the types used in this module!
---
--- After completing the challenge, it is recommended to:
---
--- *   Replace "AOC.Prelude" imports to specific modules (with explicit
---     imports) for readability.
--- *   Remove the @-Wno-unused-imports@ and @-Wno-unused-top-binds@
---     pragmas.
--- *   Replace the partial type signatures underscores in the solution
---     types @_ :~> _@ with the actual types of inputs and outputs of the
---     solution.  You can delete the type signatures completely and GHC
---     will recommend what should go in place of the underscores.
 
 module AOC.Challenge.Day06 (
-    -- day06a
-  -- , day06b
+    day06a
+  , day06b
   ) where
 
-import           AOC.Prelude
+import AOC.Prelude
+import Text.ParserCombinators.ReadP
+import Linear.V2
+import Data.Ix
+import Data.Tuple.HT
+import qualified Data.Map as M
 
-day06a :: _ :~> _
+type Point = V2 Int
+type Regions = Map Point [Point]
+
+point = mkPoint <$> int <*> string ", " <*> int
+  where mkPoint x _ y = V2 x y
+
+distance :: Point -> Point -> Int
+distance p1 p2 = sum $ abs (p2 - p1)
+
+bounds :: [Point] -> (Point, Point)
+bounds points = (V2 xMin yMin, V2 xMax yMax)
+  where (Min xMin, Min yMin, Max xMax, Max yMax) = foldMap (\(V2 x y) -> (Min x, Min y, Max x, Max y)) points
+
+addToMap :: [Point] -> Point -> Regions -> Regions
+addToMap all point regions = if noTies then M.alter (Just . maybe [point] (point:)) nearest regions else regions
+  where byDistance = sortOn (distance point) $ all
+        noTies = (length $ head $ group $ map (distance point) byDistance) == 1
+        nearest = head byDistance
+
+makeMap :: [Point] -> Regions
+makeMap points = foldr (addToMap points) M.empty $ range $ bounds points
+
+finite :: (Point, Point) -> [Point] -> Bool
+finite (min, max) = all (inRange (min+(V2 1 1),max-(V2 1 1)))
+
+closerThan :: [Point] -> Int -> Point -> Bool
+closerThan points limit point = (sum $ map (distance point) points) < limit
+
+day06a :: [Point] :~> Int
 day06a = MkSol
-    { sParse = Just
+    { sParse = parseMaybe $ sepBy1 point (string "\n")
     , sShow  = show
-    , sSolve = Just
+    , sSolve = \points -> Just $ maximum $ map length $ filter (finite $ bounds points) $ M.elems $ makeMap points
     }
 
-day06b :: _ :~> _
+day06b :: [Point] :~> Int
 day06b = MkSol
-    { sParse = Just
+    { sParse = parseMaybe $ sepBy1 point (string "\n")
     , sShow  = show
-    , sSolve = Just
+    , sSolve = \points -> Just . length $ filter (closerThan points $ dyno_ "lim" 10000) $ range $ bounds points
     }

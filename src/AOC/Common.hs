@@ -12,9 +12,11 @@ module AOC.Common where
 
 import Data.Char
 import Data.List
+import Data.Function
 import Data.Ord
 import Text.ParserCombinators.ReadP
--- import Data.Eq.HT
+import Data.Eq.HT
+import qualified Data.Map as M
 
 comma = satisfy (',' ==)
 
@@ -59,10 +61,16 @@ sortOrder f list = map fst $ sortBy (\x y -> f (snd x) (snd y)) $ indexed list
 indexed :: [a] -> [(Int, a)]
 indexed list = zip [0..(length list)] list
 
--- partitionOn f = (groupBy $ equating f) . (sortBy $ comparing f)
+partitionOn f = (groupBy $ equating f) . (sortBy $ comparing f)
 
 cross :: Eq a => [a] -> [[(a,a)]]
 cross list = [[(a,b) | b<-list , a /= b] | a <- list]
 
 crossWith :: Eq a => (a -> a -> b) -> [a] -> [[b]]
 crossWith f list = [[f a b | b<-list , a /= b] | a <- list]
+
+maximumValBy :: (a -> a -> Ordering) -> M.Map k a  -> (k, a)
+maximumValBy c = maximumBy (c `on` snd) . M.toList
+
+maximumVal :: Ord a => M.Map k a -> (k, a)
+maximumVal = maximumValBy compare
