@@ -9,21 +9,25 @@ module AOC.Challenge.Day05 (
     day05a
   , day05b
   , react
-  , reactOne
+  , reactWithout
   ) where
 
 import AOC.Prelude
-import Data.List.HT
 import Debug.Trace
 
 react :: String -> String
-react = snd . last . takeUntil (\(a,b) -> length a == length b) . oneAndNext . iterate reactOne
+react = foldr reactWithHead []
+  where reactWithHead last (head:rest) | toLower last == toLower head && last /= head = rest
+        reactWithHead last (head:rest) = last:head:rest
+        reactWithHead last [] = [last]
 
-reactOne :: String -> String
-reactOne [] = []
-reactOne [x] = [x]
-reactOne (x:y:rest) | toLower x == toLower y && x /= y = (reactOne rest)
-reactOne (x:rest) = x:(reactOne rest)
+reactWithout :: Char -> String -> String
+reactWithout omitted = foldr reactWithHead []
+  where reactWithHead last (head:rest) | toLower last == toLower head && last /= head = rest
+        reactWithHead last (head:rest) | last == omitted || toLower last == omitted = head:rest
+        reactWithHead last (head:rest) = last:head:rest
+        reactWithHead last [] | last == omitted || toLower last == omitted = []
+        reactWithHead last [] = [last]
 
 day05a :: String :~> Int
 day05a = MkSol
@@ -36,5 +40,5 @@ day05b :: String :~> Int
 day05b = MkSol
     { sParse = Just
     , sShow  = show
-    , sSolve = Just . length
+    , sSolve = \input -> Just $ minimum $ map length $ map (\one -> reactWithout one input) ['a'..'z']
     }
