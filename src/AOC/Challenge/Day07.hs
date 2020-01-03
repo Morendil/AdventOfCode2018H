@@ -4,35 +4,49 @@
 -- |
 -- Module      : AOC.Challenge.Day07
 -- License     : BSD3
---
--- Stability   : experimental
--- Portability : non-portable
---
--- Day 7.  See "AOC.Solver" for the types used in this module!
---
--- After completing the challenge, it is recommended to:
---
--- *   Replace "AOC.Prelude" imports to specific modules (with explicit
---     imports) for readability.
--- *   Remove the @-Wno-unused-imports@ and @-Wno-unused-top-binds@
---     pragmas.
--- *   Replace the partial type signatures underscores in the solution
---     types @_ :~> _@ with the actual types of inputs and outputs of the
---     solution.  You can delete the type signatures completely and GHC
---     will recommend what should go in place of the underscores.
 
 module AOC.Challenge.Day07 (
-    -- day07a
-  -- , day07b
+    day07a
+  , day07b
   ) where
 
-import           AOC.Prelude
+import Debug.Trace
 
-day07a :: _ :~> _
+import AOC.Prelude hiding (get)
+import Text.ParserCombinators.ReadP
+import qualified Data.Map as M
+
+type Node = Char
+type Edge = (Node, Node)
+type Indegrees = M.Map Node Int
+
+edge = mkEdge <$> string "Step " <*> get <*> string " must be finished before step " <*> get <*> string " can begin."
+  where mkEdge _ from _ to _ = (from, to)
+
+indegrees :: [Edge] -> Indegrees
+indegrees = foldr insert M.empty
+  where insert (from, to) m = M.alter (Just . maybe 1 (+1)) to $ M.alter (Just . maybe 0 id) from m
+
+queue :: Indegrees -> [Node]
+queue = M.keys . M.filter (==0)
+
+neighbours :: [Edge] -> Node -> [Node]
+neighbours edges node = map snd $ filter (\e -> fst e == node) edges
+
+topSort :: [Edge] -> [Node]
+topSort edges = go nodes (queue nodes) []
+  where nodes = indegrees edges
+        go :: Indegrees -> [Node] -> [Node] -> [Node]
+        go nodes [] result = reverse result
+        go nodes q@(x:rest) result = go decreased (sort $ queue decreased++rest) (x:result)
+          where decreased = traceShowId $ foldr (M.update (Just . pred)) cleaned (traceShow x $ traceShowId $ neighbours edges x)
+                cleaned = M.filter (/=0) nodes
+
+day07a :: [Edge] :~> String
 day07a = MkSol
-    { sParse = Just
-    , sShow  = show
-    , sSolve = Just
+    { sParse = parseMaybe $ sepBy1 edge (string "\n")
+    , sShow  = id
+    , sSolve = Just . topSort
     }
 
 day07b :: _ :~> _
