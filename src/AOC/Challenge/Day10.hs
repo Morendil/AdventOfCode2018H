@@ -4,40 +4,54 @@
 -- |
 -- Module      : AOC.Challenge.Day10
 -- License     : BSD3
---
--- Stability   : experimental
--- Portability : non-portable
---
--- Day 10.  See "AOC.Solver" for the types used in this module!
---
--- After completing the challenge, it is recommended to:
---
--- *   Replace "AOC.Prelude" imports to specific modules (with explicit
---     imports) for readability.
--- *   Remove the @-Wno-unused-imports@ and @-Wno-unused-top-binds@
---     pragmas.
--- *   Replace the partial type signatures underscores in the solution
---     types @_ :~> _@ with the actual types of inputs and outputs of the
---     solution.  You can delete the type signatures completely and GHC
---     will recommend what should go in place of the underscores.
 
 module AOC.Challenge.Day10 (
-    -- day10a
-  -- , day10b
+    day10a
+  , day10b
   ) where
 
-import           AOC.Prelude
+import AOC.Prelude
+import Text.ParserCombinators.ReadP
+import Linear.V2
+import Data.Ix
 
-day10a :: _ :~> _
+import Debug.Trace
+
+type Star = V2 (V2 Int)
+type Point = V2 Int
+
+star = mkStar <$> string "position=<" <*> int' <*> comma <*> int' <*> string "> velocity=<" <*> int' <*> comma <*> int' <*> string ">"
+  where mkStar _ x _ y _ vx _ vy _ = V2 (V2 x y) (V2 vx vy)
+
+evolve :: Star -> Star
+evolve (V2 pos vel) = (V2 (pos+vel) vel)
+
+surface :: [Star] -> Int
+surface stars = (xMax-xMin) * (yMax-yMin)
+  where positions = map pos stars
+        pos (V2 p _) = p
+        (Min xMin, Min yMin, Max xMax, Max yMax) = foldMap (\(V2 x y) -> (Min x, Min y, Max x, Max y)) positions
+
+bounds :: [Point] -> (Point, Point)
+bounds points = (V2 xMin yMin, V2 xMax yMax)
+  where (Min xMin, Min yMin, Max xMax, Max yMax) = foldMap (\(V2 x y) -> (Min x, Min y, Max x, Max y)) points
+
+display :: [Star] -> String
+display stars = unlines $ ["..."] ++ [[if elem (V2 x y) positions then '#' else '.' | x <- [xMin..xMax]] | y <- [yMin..yMax]]
+  where (V2 xMin yMin, V2 xMax yMax) = bounds positions
+        positions = map pos stars
+        pos (V2 p _) = p
+
+day10a :: [Star] :~> String
 day10a = MkSol
-    { sParse = Just
-    , sShow  = show
-    , sSolve = Just
+    { sParse = parseMaybe $ sepBy1 star (string "\n")
+    , sShow  = id
+    , sSolve = Just . display . snd . last . takeWhile (\(a,b) -> surface b < surface a) . oneAndNext . iterate (map evolve)
     }
 
-day10b :: _ :~> _
+day10b ::  [Star] :~> Int
 day10b = MkSol
-    { sParse = Just
+    { sParse = \input -> parseMaybe (sepBy1 star (string "\n")) input
     , sShow  = show
-    , sSolve = Just
+    , sSolve = Just . length . takeWhile (\(a,b) -> surface b < surface a) . oneAndNext . iterate (map evolve)
     }

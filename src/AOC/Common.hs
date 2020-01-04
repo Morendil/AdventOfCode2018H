@@ -31,6 +31,13 @@ int = do
   magnitude <- many1 $ satisfy isDigit
   return $ (read (sign : magnitude)) :: ReadP Int
 
+int' :: ReadP Int
+int' = do
+  many $ char ' '
+  sign <- option ' ' (char '-')
+  magnitude <- many1 $ satisfy isDigit
+  return $ (read (sign : magnitude)) :: ReadP Int
+
 numberList = sepBy1 number comma
 
 parseMaybe :: ReadP a -> String -> Maybe a
@@ -68,6 +75,12 @@ cross list = [[(a,b) | b<-list , a /= b] | a <- list]
 
 crossWith :: Eq a => (a -> a -> b) -> [a] -> [[b]]
 crossWith f list = [[f a b | b<-list , a /= b] | a <- list]
+
+allPairs :: [a] -> [(a,a)]
+allPairs list = [ (x,y) | (x:rest) <- tails list , y <- rest ]
+
+allPairsWith :: (a -> a -> b) -> [a] -> [b]
+allPairsWith f list = [ f x y | (x:rest) <- tails list , y <- rest ]
 
 maximumValBy :: (a -> a -> Ordering) -> M.Map k a  -> (k, a)
 maximumValBy c = maximumBy (c `on` snd) . M.toList
