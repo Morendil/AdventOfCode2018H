@@ -4,40 +4,47 @@
 -- |
 -- Module      : AOC.Challenge.Day09
 -- License     : BSD3
---
--- Stability   : experimental
--- Portability : non-portable
---
--- Day 9.  See "AOC.Solver" for the types used in this module!
---
--- After completing the challenge, it is recommended to:
---
--- *   Replace "AOC.Prelude" imports to specific modules (with explicit
---     imports) for readability.
--- *   Remove the @-Wno-unused-imports@ and @-Wno-unused-top-binds@
---     pragmas.
--- *   Replace the partial type signatures underscores in the solution
---     types @_ :~> _@ with the actual types of inputs and outputs of the
---     solution.  You can delete the type signatures completely and GHC
---     will recommend what should go in place of the underscores.
 
 module AOC.Challenge.Day09 (
-    -- day09a
-  -- , day09b
+    day09a
+  , day09b
   ) where
 
-import           AOC.Prelude
+import AOC.Prelude
+import Text.ParserCombinators.ReadP
+import Data.List.PointedList.Circular
+import qualified Data.Map as M
 
-day09a :: _ :~> _
+type GameState = (PointedList Int, Int, M.Map Int Int)
+
+parsePair = mkPair <$> int <*> string " players; last marble is worth " <*> int <*> string " points"
+  where mkPair players _ last _ = (players, last)
+
+play :: (Int, Int) -> Int
+play (players, last) = maxScore $ foldl (place players) start [1..last]
+
+maxScore :: GameState -> Int
+maxScore (_, _, scores) = snd $ maximumVal scores
+
+start :: GameState
+start = (singleton 0, 0, M.empty)
+
+place :: Int -> GameState -> Int -> GameState
+place players (balls, player, scores) ball | ball `mod` 23 == 0 = (fromJust $ deleteRight back, (player+1) `mod` players, M.alter (Just . maybe score (+score)) player scores)
+  where back = moveN (-7) balls
+        score = ball + _focus back
+place players (balls, player, scores) ball = (insertRight ball $ next balls, (player+1) `mod` players, scores)
+
+day09a :: (Int, Int) :~> Int
 day09a = MkSol
-    { sParse = Just
+    { sParse = parseMaybe parsePair
     , sShow  = show
-    , sSolve = Just
+    , sSolve = Just . play
     }
 
-day09b :: _ :~> _
+day09b :: (Int, Int) :~> Int
 day09b = MkSol
-    { sParse = Just
+    { sParse = parseMaybe parsePair
     , sShow  = show
-    , sSolve = Just
+    , sSolve = Just . play . (\(a,b) -> (a,b*100))
     }

@@ -90,6 +90,7 @@ library:
   - mtl
   - pandoc
   - parser-combinators
+  - pointedlist
   - profunctors
   - template-haskell
   - text
