@@ -14,11 +14,13 @@ import Debug.Trace
 
 import AOC.Prelude hiding (get)
 import Text.ParserCombinators.ReadP
+import Data.List.HT
 import qualified Data.Map as M
 
 type Node = Char
 type Edge = (Node, Node)
 type Indegrees = M.Map Node Int
+type Cost = Node -> Int
 
 edge = mkEdge <$> string "Step " <*> get <*> string " must be finished before step " <*> get <*> string " can begin."
   where mkEdge _ from _ to _ = (from, to)
@@ -39,8 +41,38 @@ topSort edges = go nodes (queue nodes) []
         go :: Indegrees -> [Node] -> [Node] -> [Node]
         go nodes [] result = reverse result
         go nodes q@(x:rest) result = go decreased (sort $ queue decreased++rest) (x:result)
-          where decreased = traceShowId $ foldr (M.update (Just . pred)) cleaned (traceShow x $ traceShowId $ neighbours edges x)
+          where decreased = foldr (M.update (Just . pred)) cleaned (neighbours edges x)
                 cleaned = M.filter (/=0) nodes
+
+type SortState = (Indegrees, [Node], Int, M.Map Node Int)
+
+topSortParallel :: Cost -> Int -> [Edge] -> Int
+topSortParallel cost workers edges = lastTime $ last $ takeUntil queueEmpty $ iterate (sortStep cost workers edges) (initialState cost workers (nodes, queue nodes, 0, M.empty))
+  where nodes = indegrees edges
+        lastTime :: SortState -> Int
+        lastTime (_, _, time, _) = time
+        queueEmpty :: SortState -> Bool
+        queueEmpty (_,q,_,_) = null q
+
+initialState :: Cost -> Int -> SortState -> SortState
+initialState cost workers s@(nodes, queue, time, assigned) = (nodes, queue, time, assigned')
+  where assigned' = assign cost workers s
+
+assign :: Cost -> Int -> SortState -> M.Map Node Int
+assign cost workers (nodes, queue, time, assigned) = foldr (\n -> M.insert n (time+cost n)) assigned $ take max $ unassigned
+  where max = workers - M.size assigned
+        unassigned = queue \\ M.keys assigned
+
+sortStep :: Cost -> Int -> [Edge] -> (Indegrees, [Node], Int, M.Map Node Int) -> (Indegrees, [Node], Int, M.Map Node Int)
+sortStep cost workers edges (nodes, [], time, assignments) = (nodes, [], time, assignments)
+sortStep cost workers edges (nodes, q, time, assignments) = (decreased, queued, time', assignments')
+  where dequeued = fst $ minimumVal assignments
+        ongoing = M.delete dequeued assignments
+        queued = sort $ (queue decreased)++(delete dequeued q)
+        decreased = foldr (M.update (Just . pred)) cleaned (neighbours edges dequeued)
+        cleaned = M.filter (/=0) nodes
+        assignments' = assign cost workers (nodes, queued, time', ongoing)
+        time' = snd $ minimumVal assignments
 
 day07a :: [Edge] :~> String
 day07a = MkSol
@@ -49,9 +81,9 @@ day07a = MkSol
     , sSolve = Just . topSort
     }
 
-day07b :: _ :~> _
+day07b :: [Edge] :~> Int
 day07b = MkSol
-    { sParse = Just
+    { sParse = parseMaybe $ sepBy1 edge (string "\n")
     , sShow  = show
-    , sSolve = Just
+    , sSolve = Just . topSortParallel (\c -> (ord c) - 64 + (dyno_ "wait" 60)) (dyno_ "cap" 5)
     }

@@ -74,3 +74,9 @@ maximumValBy c = maximumBy (c `on` snd) . M.toList
 
 maximumVal :: Ord a => M.Map k a -> (k, a)
 maximumVal = maximumValBy compare
+
+minimumValBy :: (a -> a -> Ordering) -> M.Map k a  -> (k, a)
+minimumValBy c = minimumBy (c `on` snd) . M.toList
+
+minimumVal :: Ord a => M.Map k a -> (k, a)
+minimumVal = minimumValBy compare
