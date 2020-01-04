@@ -4,35 +4,32 @@
 -- |
 -- Module      : AOC.Challenge.Day08
 -- License     : BSD3
---
--- Stability   : experimental
--- Portability : non-portable
---
--- Day 8.  See "AOC.Solver" for the types used in this module!
---
--- After completing the challenge, it is recommended to:
---
--- *   Replace "AOC.Prelude" imports to specific modules (with explicit
---     imports) for readability.
--- *   Remove the @-Wno-unused-imports@ and @-Wno-unused-top-binds@
---     pragmas.
--- *   Replace the partial type signatures underscores in the solution
---     types @_ :~> _@ with the actual types of inputs and outputs of the
---     solution.  You can delete the type signatures completely and GHC
---     will recommend what should go in place of the underscores.
 
 module AOC.Challenge.Day08 (
-    -- day08a
-  -- , day08b
+    day08a
+  , day08b
+  , tree
   ) where
 
-import           AOC.Prelude
+import AOC.Prelude
+import Data.Tree
 
-day08a :: _ :~> _
+tree :: [Int] -> Tree [Int]
+tree = fst . goTree
+  where goTree (0:nmeta:rest) = (Node (take nmeta rest) [], drop nmeta rest)
+        goTree (n:nmeta:rest) = (Node (take nmeta rest') children, drop nmeta rest')
+          where (children, rest') = (iterate goForest ([], rest)) !! n
+        goForest (trees, rest) = (tree:trees, rest')
+          where (tree, rest') = goTree rest
+
+sumMeta :: Tree [Int] -> Int
+sumMeta = sum . concat . flatten
+
+day08a :: [Int] :~> Int
 day08a = MkSol
-    { sParse = Just
+    { sParse = Just . map read . words
     , sShow  = show
-    , sSolve = Just
+    , sSolve = Just . sumMeta . tree
     }
 
 day08b :: _ :~> _
