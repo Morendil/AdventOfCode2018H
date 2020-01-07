@@ -85,6 +85,7 @@ library:
   - haskell-src-exts
   - hpack
   - linear
+  - matrix
   - megaparsec
   - microlens-th
   - mtl
@@ -98,6 +99,7 @@ library:
   - time
   - transformers
   - utility-ht
+  - vector
   - yaml
 
 executables:

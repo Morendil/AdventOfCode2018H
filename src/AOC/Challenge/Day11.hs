@@ -4,40 +4,47 @@
 -- |
 -- Module      : AOC.Challenge.Day11
 -- License     : BSD3
---
--- Stability   : experimental
--- Portability : non-portable
---
--- Day 11.  See "AOC.Solver" for the types used in this module!
---
--- After completing the challenge, it is recommended to:
---
--- *   Replace "AOC.Prelude" imports to specific modules (with explicit
---     imports) for readability.
--- *   Remove the @-Wno-unused-imports@ and @-Wno-unused-top-binds@
---     pragmas.
--- *   Replace the partial type signatures underscores in the solution
---     types @_ :~> _@ with the actual types of inputs and outputs of the
---     solution.  You can delete the type signatures completely and GHC
---     will recommend what should go in place of the underscores.
 
 module AOC.Challenge.Day11 (
-    -- day11a
-  -- , day11b
+    day11a
+  , day11b
+  , indexOfLargestKSum
   ) where
 
-import           AOC.Prelude
+import AOC.Prelude hiding (toList)
+import Data.Matrix
+import Data.Function
 
-day11a :: _ :~> _
+fuelMatrix :: Int -> Matrix Int
+fuelMatrix serial = matrix 300 300 (power serial)
+
+power :: Int -> (Int, Int) -> Int
+power serial (y,x) = hundreds - 5
+  where hundreds = (powerLevel `div` 100) `mod` 10
+        powerLevel = ((rackId * y) + serial) * rackId
+        rackId = x + 10
+
+allLevels :: Matrix Int -> [((Int,Int),Int)]
+allLevels mat = [((x,y), sum $ toList $ submatrix y (y+2) x (x+2) mat)| x <- [1..298], y <- [1..298]]
+
+display (x,y) = show x ++ "," ++ show y
+
+partialSumsByRow :: Matrix Int -> Matrix Int
+partialSumsByRow mat = foldl' (\m n -> combineRows n 1 (n-1) m) mat [2..(nrows mat)]
+
+indexOfLargestKSum :: [Int] -> Int -> Int
+indexOfLargestKSum array k = undefined
+
+day11a :: Int :~> String
 day11a = MkSol
-    { sParse = Just
-    , sShow  = show
-    , sSolve = Just
+    { sParse = Just . read
+    , sShow  = id
+    , sSolve = Just . display . fst . maximumBy (compare `on` snd) . allLevels . fuelMatrix
     }
 
-day11b :: _ :~> _
+day11b :: Int :~> String
 day11b = MkSol
-    { sParse = Just
-    , sShow  = show
-    , sSolve = Just
+    { sParse = Just . read
+    , sShow  = id
+    , sSolve = Just . show
     }
