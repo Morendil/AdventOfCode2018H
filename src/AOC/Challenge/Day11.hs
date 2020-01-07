@@ -8,12 +8,12 @@
 module AOC.Challenge.Day11 (
     day11a
   , day11b
-  , indexOfLargestKSum
   ) where
 
 import AOC.Prelude hiding (toList)
 import Data.Matrix
 import Data.Function
+import qualified Data.Vector as V
 
 fuelMatrix :: Int -> Matrix Int
 fuelMatrix serial = matrix 300 300 (power serial)
@@ -46,10 +46,10 @@ largestKSum array k = (fst result, snd $ snd result)
 
 allSquares :: Matrix Int -> [((Int,Int,Int),Int)]
 allSquares mat = map largest allSquareCoords
-  where allSquareCoords = allPairs [1..nRows mat]
-        largest (y1, y2) = ((x, y1, size), s)
+  where allSquareCoords = allPairs [1..nrows mat]
+        largest (y1, y2) = ((x+1, y1, size), s)
           where size = (y2-y1) + 1
-                row = if y1 == 1 then V.toList (getRow y2) else V.toList zipWith (-) (getRow y2) (getRow (y1-1))
+                row = if y1 == 1 then V.toList (getRow y2 mat) else V.toList $ V.zipWith (-) (getRow y2 mat) (getRow (y1-1) mat)
                 (x, s) = largestKSum row size
 
 day11a :: Int :~> String
