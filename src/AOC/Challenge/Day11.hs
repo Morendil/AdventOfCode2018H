@@ -10,7 +10,7 @@ module AOC.Challenge.Day11 (
   , day11b
   ) where
 
-import AOC.Prelude hiding (toList)
+import AOC.Prelude hiding (toList, transpose)
 import Data.Matrix
 import Data.Function
 import qualified Data.Vector as V
@@ -33,24 +33,17 @@ display3 (x,y,z) = show x ++ "," ++ show y ++ "," ++ show z
 partialSumsByRow :: Matrix Int -> Matrix Int
 partialSumsByRow mat = foldl' (\m n -> combineRows n 1 (n-1) m) mat [2..(nrows mat)]
 
-largestKSum :: [Int] -> Int -> (Int, Int)
-largestKSum array k = (fst result, snd $ snd result)
-  where result = foldl update starting [0..maxIdx]
-        update (index, (windowSum, maxSum)) n = if newSum > maxSum
-            then (n+1, (newSum, newSum))
-            else (index, (newSum, maxSum))
-          where newSum = windowSum - (array !! n) + (array !! (n+k))
-        starting = (0, (firstSum, firstSum))
-        firstSum = sum $ take k array
-        maxIdx = (length array) - k - 1
+summedAreaTable :: Matrix Int -> Matrix Int
+summedAreaTable = transpose . partialSumsByRow . transpose . partialSumsByRow
 
 allSquares :: Matrix Int -> [((Int,Int,Int),Int)]
-allSquares mat = map largest allSquareCoords
-  where allSquareCoords = allPairs [1..nrows mat]
-        largest (y1, y2) = ((x+1, y1, size), s)
-          where size = (y2-y1) + 1
-                row = if y1 == 1 then V.toList (getRow y2 mat) else V.toList $ V.zipWith (-) (getRow y2 mat) (getRow (y1-1) mat)
-                (x, s) = largestKSum row size
+allSquares mat = [((x,y,side), sumAt (x,y,side)) | side <-[1..nrows mat], x <- [1..(300 - side - 1)], y <- [1..(300 - side - 1)]]
+  where sumAt (x,y,1) = getElem y x mat
+        sumAt (x,y,side) = topLeft+bottomRight-bottomLeft-topRight
+          where bottomRight = getElem (y+side-1) (x+side-1) mat
+                topLeft = if x>1 && y > 1 then getElem (y-1) (x-1) mat else 0
+                bottomLeft = if x > 1 then getElem (y+side-1) (x-1) mat else 0
+                topRight = if y > 1 then getElem (y-1) (x+side-1) mat else 0
 
 day11a :: Int :~> String
 day11a = MkSol
@@ -63,5 +56,5 @@ day11b :: Int :~> String
 day11b = MkSol
     { sParse = Just . read
     , sShow  = id
-    , sSolve = Just . display3 . fst . maximumBy (compare `on` snd) . allSquares . partialSumsByRow . fuelMatrix
+    , sSolve = Just . display3 . fst . maximumBy (compare `on` snd) . allSquares . summedAreaTable . fuelMatrix
     }
