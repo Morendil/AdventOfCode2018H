@@ -11,12 +11,14 @@ module AOC.Challenge.Day11 (
   ) where
 
 import AOC.Prelude hiding (toList, transpose)
-import Data.Matrix
 import Data.Function
-import qualified Data.Vector as V
+import Linear.V2
+import qualified Data.Map as M
 
-fuelMatrix :: Int -> Matrix Int
-fuelMatrix serial = matrix 300 300 (power serial)
+type Point = V2 Int
+
+fuelMatrix :: Int -> Map Point Int
+fuelMatrix serial = foldr (\xy -> M.insert xy (power xy)) M.empty $ range ((V2 1 1),(V2 300 300))
 
 power :: Int -> (Int, Int) -> Int
 power serial (y,x) = hundreds - 5
@@ -24,26 +26,29 @@ power serial (y,x) = hundreds - 5
         powerLevel = ((rackId * y) + serial) * rackId
         rackId = x + 10
 
-allLevels :: Matrix Int -> [((Int,Int),Int)]
-allLevels mat = [((x,y), sum $ toList $ submatrix y (y+2) x (x+2) mat)| x <- [1..298], y <- [1..298]]
+allLevels :: Map Point Int -> [((Int,Int),Int)]
+allLevels mat = [((x,y), rangeSum mat (V2 x y, V2 (x+2) (y+2)))| x <- [1..298], y <- [1..298]]
+  where rangeSum mat r = sum $ catMaybes $ map (flip M.lookup mat) $ range r
 
 display2 (x,y) = show x ++ "," ++ show y
 display3 (x,y,z) = show x ++ "," ++ show y ++ "," ++ show z
 
-partialSumsByRow :: Matrix Int -> Matrix Int
-partialSumsByRow mat = foldl' (\m n -> combineRows n 1 (n-1) m) mat [2..(nrows mat)]
+summedAreaTable :: Map Point Int -> Map Point Int
+summedAreaTable mat = sat
+  where sat = M.mapWithKey rollUp mat
+        rollUp ((x,y) val) = sum $ catMaybes [Just val, above, left, (-diagonal)]
+          where above = M.lookup (x,y-1) sat
+                left = M.lookup (x-1,y) sat
+                diagonal = M.lookup (x-1,y-1) sat
 
-summedAreaTable :: Matrix Int -> Matrix Int
-summedAreaTable = transpose . partialSumsByRow . transpose . partialSumsByRow
-
-allSquares :: Matrix Int -> [((Int,Int,Int),Int)]
+allSquares :: Map Point Int -> [((Int,Int,Int),Int)]
 allSquares mat = [((x,y,side), sumAt (x,y,side)) | side <-[1..nrows mat], x <- [1..(300 - side - 1)], y <- [1..(300 - side - 1)]]
-  where sumAt (x,y,1) = getElem y x mat
+  where sumAt (x,y,1) = fromMaybe 0 $ M.lookup (x,y) mat
         sumAt (x,y,side) = topLeft+bottomRight-bottomLeft-topRight
-          where bottomRight = getElem (y+side-1) (x+side-1) mat
-                topLeft = if x>1 && y > 1 then getElem (y-1) (x-1) mat else 0
-                bottomLeft = if x > 1 then getElem (y+side-1) (x-1) mat else 0
-                topRight = if y > 1 then getElem (y-1) (x+side-1) mat else 0
+          where bottomRight = fromMaybe 0 $ M.lookup (x+side-1,y+side-1) mat
+                topLeft = fromMaybe 0 $ M.lookup (x-1,y-1) mat
+                bottomLeft = fromMaybe 0 $ M.lookup (x-1,y+side-1) mat
+                topRight = fromMaybe 0 $ M.lookup (x+side-1,y-1) mat
 
 day11a :: Int :~> String
 day11a = MkSol
