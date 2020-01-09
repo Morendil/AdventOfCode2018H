@@ -10,12 +10,15 @@
 --
 module AOC.Common where
 
+import Control.Monad
 import Data.Char
 import Data.List
+import Data.Maybe
 import Data.Function
 import Data.Ord
 import Text.ParserCombinators.ReadP
 import Data.Eq.HT
+import qualified Data.Set as S
 import qualified Data.Map as M
 
 comma = satisfy (',' ==)
@@ -93,3 +96,6 @@ minimumValBy c = minimumBy (c `on` snd) . M.toList
 
 minimumVal :: Ord a => M.Map k a -> (k, a)
 minimumVal = minimumValBy compare
+
+firstRepeated :: Ord a => [a] -> Maybe a
+firstRepeated list = listToMaybe $ mapMaybe id $ zipWith (\a b-> a <$ guard (S.member a b)) list (scanl (flip S.insert) S.empty list)

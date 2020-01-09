@@ -10,11 +10,8 @@ module AOC.Challenge.Day01 (
   , day01b
   ) where
 
-import           AOC.Prelude
+import AOC.Prelude
 import qualified Data.Set as Set
-
-firstRepeated :: Ord a => [a] -> Maybe a
-firstRepeated list = listToMaybe $ mapMaybe id $ zipWith (\a b-> a <$ guard (Set.member a b)) list (scanl (flip Set.insert) Set.empty list)
 
 day01a :: [Int] :~> Int
 day01a = MkSol
