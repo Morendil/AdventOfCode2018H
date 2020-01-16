@@ -11,6 +11,10 @@
 module AOC.Challenge.Day15 (
     day15a
   , day15b
+  , doRound
+  , parse
+  , Fight(..)
+  , outcome
   ) where
 
 import AOC.Prelude
@@ -58,6 +62,10 @@ armies = M.keys . M.filter isMobile
   where isMobile Floor = False
         isMobile _ = True
 
+hitpoints :: Unit -> Int
+hitpoints Floor = 0
+hitpoints (Unit _ _ hp) = hp
+
 near :: Point -> [Point]
 near (Pt v) = map (\o -> Pt (v+o)) [V2 1 0, V2 0 1, V2 (-1) 0, V2 0 (-1)]
 
@@ -73,8 +81,7 @@ inRange :: Caves -> [Point] -> [Point]
 inRange caves = foldMap (neighbours caves)
 
 path :: Caves -> Point -> Point -> Maybe [Point]
-path caves from to = fmap snd $ aStar (neighbours caves) (\_ _ -> 1) (manhattan to) (== to) from
-  where manhattan (Pt v1) (Pt v2) = sum $ abs (v2-v1)
+path caves from to = fmap snd $ dijkstra (reverse . sort . neighbours caves) (\_ _ -> 1) (== to) from
 
 shortest :: [Path] -> [Path]
 shortest paths = filter (\p -> length p == minLen) paths
@@ -89,20 +96,20 @@ step = minimum . map head
 
 doTurn :: Fight -> Point -> Fight
 doTurn f@(Done _ _) spot = f
-doTurn f@(Fighting caves rounds) spot = if null me || null opponents then f else Fighting (turn caves) rounds
-  where turn :: Caves -> Caves
-        turn = maybeMove . maybeAttack
-        maybeMove = if null movements then id else moveTo newSpot
-        maybeAttack = if null attackable then id else M.update dealDamage attacked
-        dealDamage (Unit f_ a_ hp) = if (hp-atk) > 0 then Just $ Unit f_ a_ (hp-atk) else Nothing
+doTurn (Fighting caves rounds) spot = if dead || null opponents then (Done caves rounds) else Fighting (turn caves) rounds
+  where turn = maybeMove . maybeAttack
+        maybeMove = if null movements || (not.null) (attackable spot) then id else moveTo newSpot
+        maybeAttack = if null (attackable newSpot) then id else M.update dealDamage (attacked newSpot)
+        dealDamage (Unit f_ a_ hp) = if (hp-atk) > 0 then Just $ Unit f_ a_ (hp-atk) else Just Floor
         dealDamage _ = error "Attacking the floor ?"
-        attacked = minimum attackable
-        attackable = intersect opponents $ near newSpot
-        moveTo dest = M.insert dest unit . M.delete spot
-        newSpot = if null movements then spot else (step . chosen . shortest) movements
+        attacked = minimumOn (\dest -> (hitpoints $ fromJust $ M.lookup dest caves, dest)) . attackable
+        attackable dest = intersect opponents $ near dest
+        moveTo dest = M.insert dest unit . M.insert spot Floor
+        newSpot = if null movements || (not.null) (attackable spot) then spot else (step . chosen . shortest) movements
         movements = mapMaybe (path caves spot) $ inRange caves opponents
         opponents = targets faction caves
         me = M.lookup spot caves
+        dead = me == Just Floor
         unit@(Unit faction atk _) = fromJust me
 
 doRound :: Fight -> Fight
@@ -116,8 +123,6 @@ outcome fight = rounds * totalHitpoints
   where (units, rounds) = case runFight fight of (Done caves _rounds) -> (caves, _rounds); (Fighting caves _rounds) -> (caves, _rounds)
         runFight = last . takeUntil done . iterate doRound
         totalHitpoints = sum $ map hitpoints $ M.elems units
-        hitpoints Floor = 0
-        hitpoints (Unit _ _ hp) = hp
         done (Done _ _ ) = True
         done _ = False
 
