@@ -11,10 +11,6 @@
 module AOC.Challenge.Day15 (
     day15a
   , day15b
-  , doRound
-  , parse
-  , Fight(..)
-  , outcome
   ) where
 
 import AOC.Prelude
@@ -81,7 +77,15 @@ inRange :: Caves -> [Point] -> [Point]
 inRange caves = foldMap (neighbours caves)
 
 path :: Caves -> Point -> Point -> Maybe [Point]
-path caves from to = fmap snd $ dijkstra (reverse . sort . neighbours caves) (\_ _ -> 1) (== to) from
+path caves from to = fmap snd $ dijkstra (neighbours caves) (\_ _ -> 1) (== to) from
+
+possiblePaths :: Caves -> Point -> [Point] -> [Path]
+possiblePaths caves spot opponents = mapMaybe (path caves spot) $ inRange caves opponents
+
+possiblePaths' :: Caves -> Point -> [Point] -> [Path]
+possiblePaths' caves spot opponents = catMaybes $ concatMap paths starts
+  where starts = neighbours caves spot
+        paths start = map (fmap (start:) . path caves start) $ inRange caves opponents
 
 shortest :: [Path] -> [Path]
 shortest paths = filter (\p -> length p == minLen) paths
@@ -96,8 +100,8 @@ step = minimum . map head
 
 doTurn :: Fight -> Point -> Fight
 doTurn f@(Done _ _) spot = f
-doTurn (Fighting caves rounds) spot = if dead || null opponents then (Done caves rounds) else Fighting (turn caves) rounds
-  where turn = maybeMove . maybeAttack
+doTurn (Fighting caves rounds) spot = if (not dead) && (null opponents) then (Done caves rounds) else Fighting (turn caves) rounds
+  where turn = if dead then id else maybeMove . maybeAttack
         maybeMove = if null movements || (not.null) (attackable spot) then id else moveTo newSpot
         maybeAttack = if null (attackable newSpot) then id else M.update dealDamage (attacked newSpot)
         dealDamage (Unit f_ a_ hp) = if (hp-atk) > 0 then Just $ Unit f_ a_ (hp-atk) else Just Floor
@@ -106,7 +110,7 @@ doTurn (Fighting caves rounds) spot = if dead || null opponents then (Done caves
         attackable dest = intersect opponents $ near dest
         moveTo dest = M.insert dest unit . M.insert spot Floor
         newSpot = if null movements || (not.null) (attackable spot) then spot else (step . chosen . shortest) movements
-        movements = mapMaybe (path caves spot) $ inRange caves opponents
+        movements = possiblePaths' caves spot opponents
         opponents = targets faction caves
         me = M.lookup spot caves
         dead = me == Just Floor
@@ -123,11 +127,27 @@ outcome fight = rounds * totalHitpoints
   where (units, rounds) = case runFight fight of (Done caves _rounds) -> (caves, _rounds); (Fighting caves _rounds) -> (caves, _rounds)
         runFight = last . takeUntil done . iterate doRound
         totalHitpoints = sum $ map hitpoints $ M.elems units
-        done (Done _ _ ) = True
-        done _ = False
+
+done :: Fight -> Bool
+done (Done _ _ ) = True
+done _ = False
 
 initial :: Caves -> Fight
 initial caves = Fighting caves 0
+
+bounds :: [Point] -> (V2 Int, V2 Int)
+bounds points = (V2 xMin yMin, V2 xMax yMax)
+  where (Min xMin, Min yMin, Max xMax, Max yMax) = foldMap (\(Pt (V2 x y)) -> (Min x, Min y, Max x, Max y)) points
+
+dispFight f@(Done caves rounds) = unlines $ ["+"]++(display caves)++[show $ outcome f]
+dispFight (Fighting caves rounds) = unlines $ ["*"]++(display caves)++[show rounds]
+debug = mapM_ (putStrLn . dispFight) . takeUntil done . iterate doRound
+
+display caves = [ [ rep $ M.lookup (Pt (V2 x y)) caves | x <- [xMin-1..xMax+1]] | y <- [yMin-1..yMax+1]]
+  where rep (Just Floor) = '.'
+        rep (Just (Unit faction _ _ )) = faction
+        rep Nothing = '#'
+        (V2 xMin yMin, V2 xMax yMax) = bounds $ M.keys caves
 
 day15a :: Caves :~> Int
 day15a = MkSol
