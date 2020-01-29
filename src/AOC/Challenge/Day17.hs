@@ -74,12 +74,12 @@ doStep maxY = stepSpread . stepFall maxY
 
 stepFall :: Int -> ([Source], Scan) -> ([Source], Scan)
 stepFall maxY (sources, scan) = foldl doFall ([], scan) sources
-   where doFall (sources, scan) source = (sources++newSources, newScan)
+   where doFall (sources, scan) source = (nub $ sources++newSources, newScan)
            where (newSources, newScan) = fall maxY (source, scan)
 
 stepSpread :: ([Source], Scan) -> ([Source], Scan)
 stepSpread (sources, scan) = foldl doSpread ([], scan) sources
-  where doSpread (sources, scan) source = (sources++newSources, newScan)
+  where doSpread (sources, scan) source = (nub $ sources++newSources, newScan)
            where (newSources, newScan) = spread (source, scan)
 
 fall :: Int -> (Source, Scan) -> ([Source], Scan)
@@ -89,16 +89,14 @@ fall maxY (source@(V2 _ y), scan) = if supported scan source then ([source], mar
 
 spread :: (Source, Scan) -> ([Source], Scan)
 spread (source, scan) = if filling then filled else toEdges
-  where spreadLeft = reverse $ takeUntil (not.flowing) (lefts source)
-        spreadRight = reverse $ takeUntil (not.flowing) (rights source)
-        lookLeft = reverse $ takeUntil (not.moving) (lefts source)
+  where lookLeft = reverse $ takeUntil (not.moving) (lefts source)
         lookRight = reverse $ takeUntil (not.moving) (rights source)
         flowing pt = (supported scan pt) && not (blocked scan pt)
         moving pt = (supported scan pt) && not (contained scan pt)
         falling pt = not (supported scan pt) && not (blocked scan pt)
-        filling = (blocked scan $ head lookLeft) && (blocked scan $ head lookRight)
-        filled = ([rise], fill (tail spreadLeft++tail spreadRight++[source]) scan)
-        toEdges = (filter falling [head spreadRight, head spreadLeft], flow (tail spreadLeft++tail spreadRight) scan)
+        filling = (contained scan $ head lookLeft) && (contained scan $ head lookRight)
+        filled = ([rise], fill (tail lookLeft++tail lookRight++[source]) scan)
+        toEdges = (filter falling [head lookLeft, head lookRight], flow (tail lookLeft++tail lookRight) scan)
         rise = source - V2 0 1
 
 fill :: [Point] -> Scan -> Scan
@@ -111,7 +109,8 @@ at :: Scan -> Point -> Char
 at scan pt = fromMaybe '.' $ M.lookup pt scan
 
 supported :: Scan -> Point -> Bool
-supported scan pt = at scan (pt + V2 0 1) /= '.'
+supported scan pt = under == '#' || under == '~'
+  where under = at scan (pt + V2 0 1)
 
 blocked :: Scan -> Point -> Bool
 blocked scan pt = at scan pt /= '.'
