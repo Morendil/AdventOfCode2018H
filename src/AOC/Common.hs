@@ -15,18 +15,20 @@ import Data.Char
 import Data.List
 import Data.Maybe
 import Data.Function
-import Data.Ord
+import Data.Ord ()
 import Text.ParserCombinators.ReadP
 import Data.Eq.HT
 import qualified Data.Set as S
 import qualified Data.Map as M
 
+comma :: ReadP Char
 comma = satisfy (',' ==)
 
+number :: ReadP Integer
 number = do
   sign <- option ' ' (char '-')
   magnitude <- many1 $ satisfy isDigit
-  return $ (read (sign : magnitude)) :: ReadP Integer
+  return (read (sign : magnitude))
 
 int :: ReadP Int
 int = do
@@ -41,6 +43,7 @@ int' = do
   magnitude <- many1 $ satisfy isDigit
   return $ (read (sign : magnitude)) :: ReadP Int
 
+numberList :: ReadP [Integer]
 numberList = sepBy1 number comma
 
 parseMaybe :: ReadP a -> String -> Maybe a
@@ -53,11 +56,11 @@ notSame :: Eq a => (a, a) -> Bool
 notSame (a, b) = a /= b
 
 oneAndNext :: [a] -> [(a,a)]
-oneAndNext sequence = zip sequence (tail sequence)
+oneAndNext xs = zip xs (tail xs)
 
 untilStable :: Eq a => [a] -> a
-untilStable seq = if null pairs then head seq else snd $ last pairs
-  where pairs = takeWhile notSame $ oneAndNext seq
+untilStable xs = if null pairs then head xs else snd $ last pairs
+  where pairs = takeWhile notSame $ oneAndNext xs
 
 replace :: Int -> a -> [a] -> [a]
 replace n x xs = (take n xs) ++ [x] ++ (drop (n+1) xs)
@@ -71,7 +74,8 @@ sortOrder f list = map fst $ sortBy (\x y -> f (snd x) (snd y)) $ indexed list
 indexed :: [a] -> [(Int, a)]
 indexed list = zip [0..(length list)] list
 
-partitionOn f = (groupBy $ equating f) . (sortBy $ comparing f)
+partitionOn :: Ord b => (a -> b) -> [a] -> [[a]]
+partitionOn f = (groupBy $ equating f) . (sortOn f)
 
 cross :: Eq a => [a] -> [[(a,a)]]
 cross list = [[(a,b) | b<-list , a /= b] | a <- list]
@@ -98,4 +102,4 @@ minimumVal :: Ord a => M.Map k a -> (k, a)
 minimumVal = minimumValBy compare
 
 firstRepeated :: Ord a => [a] -> Maybe a
-firstRepeated list = listToMaybe $ mapMaybe id $ zipWith (\a b-> a <$ guard (S.member a b)) list (scanl (flip S.insert) S.empty list)
+firstRepeated list = listToMaybe $ catMaybes $ zipWith (\a b-> a <$ guard (S.member a b)) list (scanl (flip S.insert) S.empty list)
