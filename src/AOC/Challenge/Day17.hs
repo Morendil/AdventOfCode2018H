@@ -66,19 +66,19 @@ scanAll = foldMap scanVein
 
 simulate :: Source -> Scan -> Scan
 simulate source scan = chopY $ snd $ last $ takeUntil (null.fst) $ iterate (doStep maxY) ([source], scan)
-  where (Min minY, Max maxY) = foldMap (\(V2 x y) -> (Min y, Max y)) $ M.keys scan
+  where (Min minY, Max maxY) = foldMap (\(V2 _ y) -> (Min y, Max y)) $ M.keys scan
         chopY = M.filterWithKey (\(V2 _ y) _ -> y >= minY)
 
 doStep :: Int -> ([Source], Scan) -> ([Source], Scan)
 doStep maxY = stepSpread . stepFall maxY
 
 stepFall :: Int -> ([Source], Scan) -> ([Source], Scan)
-stepFall maxY (sources, scan) = foldl doFall ([], scan) sources
+stepFall maxY (sources', scan') = foldl doFall ([], scan') sources'
    where doFall (sources, scan) source = (nub $ sources++newSources, newScan)
            where (newSources, newScan) = fall maxY (source, scan)
 
 stepSpread :: ([Source], Scan) -> ([Source], Scan)
-stepSpread (sources, scan) = foldl doSpread ([], scan) sources
+stepSpread (sources', scan') = foldl doSpread ([], scan') sources'
   where doSpread (sources, scan) source = (nub $ sources++newSources, newScan)
            where (newSources, newScan) = spread (source, scan)
 
@@ -91,7 +91,6 @@ spread :: (Source, Scan) -> ([Source], Scan)
 spread (source, scan) = if filling then filled else toEdges
   where lookLeft = reverse $ takeUntil (not.moving) (lefts source)
         lookRight = reverse $ takeUntil (not.moving) (rights source)
-        flowing pt = (supported scan pt) && not (blocked scan pt)
         moving pt = (supported scan pt) && not (contained scan pt)
         falling pt = not (supported scan pt) && not (blocked scan pt)
         filling = (contained scan $ head lookLeft) && (contained scan $ head lookRight)
@@ -130,12 +129,14 @@ allWater = length . M.filter (/= '#')
 standingWater :: Scan -> Int
 standingWater = length . M.filter (== '~')
 
+parse :: String -> Maybe [Vein]
 parse = parseMaybe $ sepBy1 vein (string "\n")
 
 bounds :: [Point] -> (V2 Int, V2 Int)
 bounds points = (V2 xMin yMin, V2 xMax yMax)
   where (Min xMin, Min yMin, Max xMax, Max yMax) = foldMap (\(V2 x y) -> (Min x, Min y, Max x, Max y)) points
 
+display :: Scan -> [String]
 display scan = [ [ rep $ M.lookup (V2 x y) scan | x <- [xMin-1..xMax+1]] | y <- [yMin-1..yMax+1]]
   where rep (Just c) = c
         rep Nothing = '.'
