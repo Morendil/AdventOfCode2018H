@@ -50,7 +50,12 @@ allow-newer: true
 # extra-package-dbs: []
 
 # Control whether we use the GHC we find on the path
-# system-ghc: true
+system-ghc: true
+# For Nix development
+nix:
+  enable: true
+  packages: [zlib.dev, zlib.out]
+
 #
 # Require a specific version of stack, using version ranges
 # require-stack-version: -any # Default
