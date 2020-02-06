@@ -4,40 +4,56 @@
 -- |
 -- Module      : AOC.Challenge.Day20
 -- License     : BSD3
---
--- Stability   : experimental
--- Portability : non-portable
---
--- Day 20.  See "AOC.Solver" for the types used in this module!
---
--- After completing the challenge, it is recommended to:
---
--- *   Replace "AOC.Prelude" imports to specific modules (with explicit
---     imports) for readability.
--- *   Remove the @-Wno-unused-imports@ and @-Wno-unused-top-binds@
---     pragmas.
--- *   Replace the partial type signatures underscores in the solution
---     types @_ :~> _@ with the actual types of inputs and outputs of the
---     solution.  You can delete the type signatures completely and GHC
---     will recommend what should go in place of the underscores.
 
 module AOC.Challenge.Day20 (
-    -- day20a
-  -- , day20b
+    day20a
+  , day20b
+  , track
+  , initial
   ) where
 
-import           AOC.Prelude
+import AOC.Prelude
+import Linear.V2
+import qualified Data.Map as M
 
-day20a :: _ :~> _
+type Facility = M.Map (V2 Int) Int
+type Exploration = (Facility, (V2 Int, [V2 Int]))
+
+initial :: Exploration
+initial = (M.empty, (V2 0 0, []))
+
+furthest :: String -> Int
+furthest = maximum . M.elems . fst . foldl (flip track) initial
+
+realFar :: String -> Int
+realFar = length . filter (>= 1000) . M.elems . fst . foldl (flip track) initial
+
+track :: Char -> Exploration -> Exploration
+track move same@(facility, (pos, stack)) = case move of
+    '^' -> same
+    '$' -> same
+    'E' -> go (pos + (V2 0 1))
+    'W' -> go (pos - (V2 0 1))
+    'S' -> go (pos + (V2 1 0))
+    'N' -> go (pos - (V2 1 0))
+    '(' -> (facility, (pos, pos:stack))
+    ')' -> (facility, (head stack, tail stack))
+    '|' -> (facility, (head stack, stack))
+  where sofar = fromMaybe 0 $ M.lookup pos facility
+        go newPos = (M.alter incDist newPos facility, (newPos, stack))
+        incDist Nothing = Just $ sofar + 1
+        incDist (Just dist) = Just dist
+
+day20a :: String :~> Int
 day20a = MkSol
-    { sParse = Just
+    { sParse = Just . head . lines
     , sShow  = show
-    , sSolve = Just
+    , sSolve = Just . furthest
     }
 
 day20b :: _ :~> _
 day20b = MkSol
-    { sParse = Just
+    { sParse = Just . head . lines
     , sShow  = show
-    , sSolve = Just
+    , sSolve = Just . realFar
     }
