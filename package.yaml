@@ -88,6 +88,7 @@ library:
   - linear
   - matrix
   - megaparsec
+  - MemoTrie
   - microlens-th
   - mtl
   - pandoc
@@ -100,6 +101,7 @@ library:
   - text-metrics
   - time
   - transformers
+  - unordered-containers
   - utility-ht
   - vector
   - yaml
