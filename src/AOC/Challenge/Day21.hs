@@ -113,5 +113,5 @@ day21b :: Program :~> Int
 day21b = MkSol
     { sParse = parseMaybe sourceCode
     , sShow  = show
-    , sSolve = Just . lastUnique . allValues
+    , sSolve = lastUnique . allValues
     }
