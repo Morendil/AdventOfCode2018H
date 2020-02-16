@@ -12,7 +12,7 @@ module AOC.Challenge.Day22 (
 
 import AOC.Prelude
 import Text.ParserCombinators.ReadP
-import Data.HashSet hiding (map, filter)
+import Data.HashSet hiding (map, filter, foldr)
 import Data.Hashable
 import Data.List
 import Data.Maybe
@@ -69,7 +69,7 @@ add (x1, y1, t1) (x2, y2, t2) = (x1+x2, y1+y2, t1+t2)
 data AStarState a c = AStarState {
   closedList :: [a],
   openList :: PSQ.HashPSQ a c (),
-  cost :: M.Map a c,
+  costs :: M.Map a c,
   back :: M.Map a a,
   found :: Maybe a
 }
@@ -88,11 +88,20 @@ doAStar :: (Foldable f, Num cost, Ord cost, Ord state, Hashable state)
   -> (state -> cost)
   -> (state -> Bool)
   -> AStarState state cost
-  -> Maybe AStarState
+  -> Maybe (AStarState state cost)
 doAStar neighbours cost heuristic goal state = case PSQ.minView $ openList state of
   Nothing -> Nothing
-  Just (x, _, _, finished) | goal x -> finished { found = x, costs = M.insert x (cost x) (costs finished)}
-  Just (x, _, _, xs) -> undefined
+  Just (x, _, _, _) | goal x -> Just $ state { found = Just x }
+  Just (x, _, _, xs) -> Just $ state' { closedList = x:(closedList state'), openList = xs }
+    where state' = foldr maybeInsert state (neighbours x)
+          maybeInsert candidate searchState = let itsCost = cost x candidate in
+            if elem candidate (closedList searchState) || maybe False (< itsCost) (M.lookup candidate (costs searchState))
+            then searchState
+            else searchState {
+              costs = M.insert candidate itsCost (costs searchState),
+              back = M.insert candidate x (back searchState),
+              openList = PSQ.insert candidate itsCost () (openList searchState)
+              }
 
 aStar :: (Foldable f, Num cost, Ord cost, Ord state, Hashable state)
   => (state -> f state)
@@ -101,9 +110,10 @@ aStar :: (Foldable f, Num cost, Ord cost, Ord state, Hashable state)
   -> (state -> Bool)
   -> state
   -> Maybe (cost, [state])
-aStar neighbours cost heuristic goal initial = getPath <$> endState
+aStar neighbours cost heuristic goal initial = getCostAndPath <$> endState
   where endState = doAStar neighbours cost heuristic goal (initAStar initial)
-        getPath s = reverse $ takeWhile (/= initial) $ iterate ((back endState) !)
+        getCostAndPath s = let path = getPath s in (sum $ map ((costs s) M.!) $ path, path)
+        getPath s = reverse $ takeWhile (/= initial) $ iterate ((back s) M.!) (fromJust $ found s)
 
 path :: Int -> (Int, Int) -> Maybe (Int, [(Int, Int, Int)])
 path depth target@(tx, ty) = aStar (neighboursmem depth target) moveCost heuristic goal start
