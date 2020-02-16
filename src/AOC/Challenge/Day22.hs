@@ -72,38 +72,41 @@ data AStarState a c = AStarState {
   costs :: M.Map a c,
   back :: M.Map a a,
   found :: Maybe a
-}
+} deriving (Eq, Show)
 
 initAStar start = AStarState {
-  closedList = [start],
-  openList = PSQ.empty,
-  costs = M.empty,
+  closedList = [],
+  openList = PSQ.singleton start 0 (),
+  costs = M.singleton start 0,
   back = M.empty,
   found = Nothing
 }
 
-doAStar :: (Foldable f, Num cost, Ord cost, Ord state, Hashable state)
+debug :: (Ord state, Show state, Ord cost, Show cost) => AStarState state cost -> String
+debug aStarState = show (length $ closedList aStarState) ++ ", " ++ show (PSQ.size $ openList aStarState) ++ show (maximum $ M.elems $ costs aStarState)
+
+doAStar :: (Foldable f, Num cost, Ord cost, Ord state, Hashable state, Show state, Show cost)
   => (state -> f state)
   -> (state -> state -> cost)
   -> (state -> cost)
   -> (state -> Bool)
   -> AStarState state cost
   -> Maybe (AStarState state cost)
-doAStar neighbours cost heuristic goal state = case PSQ.minView $ openList state of
+doAStar neighbours cost heuristic goal aStarState = trace (debug aStarState) $ case PSQ.minView $ openList aStarState of
   Nothing -> Nothing
-  Just (x, _, _, _) | goal x -> Just $ state { found = Just x }
-  Just (x, _, _, xs) -> Just $ state' { closedList = x:(closedList state'), openList = xs }
-    where state' = foldr maybeInsert state (neighbours x)
-          maybeInsert candidate searchState = let itsCost = cost x candidate in
+  Just (x, _, _, _) | goal x -> Just $ aStarState { found = Just x }
+  Just (x, _, _, xs) -> doAStar neighbours cost heuristic goal $ aStarState' { closedList = x:(closedList aStarState') }
+    where aStarState' = foldr maybeInsert (aStarState { openList = xs }) (neighbours x)
+          maybeInsert candidate searchState = let itsCost = cost x candidate + (costs searchState) M.! x in
             if elem candidate (closedList searchState) || maybe False (< itsCost) (M.lookup candidate (costs searchState))
             then searchState
             else searchState {
               costs = M.insert candidate itsCost (costs searchState),
               back = M.insert candidate x (back searchState),
-              openList = PSQ.insert candidate itsCost () (openList searchState)
+              openList = PSQ.insert candidate (heuristic candidate) () (openList searchState)
               }
 
-aStar :: (Foldable f, Num cost, Ord cost, Ord state, Hashable state)
+aStar :: (Foldable f, Num cost, Ord cost, Ord state, Hashable state, Show state, Show cost)
   => (state -> f state)
   -> (state -> state -> cost)
   -> (state -> cost)
