@@ -66,12 +66,14 @@ okFor tool 2 = tool == -1 || tool == 0
 
 add (x1, y1, t1) (x2, y2, t2) = (x1+x2, y1+y2, t1+t2)
 
-data AStarState a c = AStarState {
-  closedList :: [a],
-  openList :: PSQ.HashPSQ a c (),
-  costs :: M.Map a c,
-  back :: M.Map a a,
-  found :: Maybe a
+type Cell = (Int, Int, Int)
+
+data AStarState = AStarState {
+  closedList :: [Cell],
+  openList :: PSQ.HashPSQ Cell Int (),
+  costs :: M.Map Cell Int,
+  back :: M.Map Cell Cell,
+  found :: Maybe Cell
 } deriving (Eq, Show)
 
 initAStar start = AStarState {
@@ -82,47 +84,57 @@ initAStar start = AStarState {
   found = Nothing
 }
 
-debug :: (Ord state, Show state, Ord cost, Show cost) => AStarState state cost -> String
-debug aStarState = show (length $ closedList aStarState) ++ ", " ++ show (PSQ.size $ openList aStarState) ++ show (maximum $ M.elems $ costs aStarState)
+yy (x, y, z) = y
+xx (x, y, z) = x
 
-doAStar :: (Foldable f, Num cost, Ord cost, Ord state, Hashable state, Show state, Show cost)
-  => (state -> f state)
-  -> (state -> state -> cost)
-  -> (state -> cost)
-  -> (state -> Bool)
-  -> AStarState state cost
-  -> Maybe (AStarState state cost)
+debug :: AStarState -> String
+debug aStarState = unlines {-- $ [[disp (x,y) | x <- [0..maxx]] | y <- [0..maxy]] ++ --} [show maxx++","++show maxy]
+  where cells = M.keys $ costs aStarState
+        maxy = maximum $ map yy cells
+        maxx = maximum $ map xx cells
+        disp (x,y) = if (x,y,0) `elem` cells then 'N' else if (x,y,-1) `elem` cells then 'T' else if (x,y,1) `elem` cells then 'G' else '.'
+
+-- show (length $ closedList aStarState) ++ ", " ++ show (maximum $ map yy $ M.keys $ costs aStarState) ++ "," ++ show (maximum $ map xx $ M.keys $ costs aStarState) ++ ", " ++ show (maximum $ M.elems $ costs aStarState)
+
+doAStar :: (Foldable f)
+  => (Cell -> f Cell)
+  -> (Cell -> Cell -> Int)
+  -> (Cell -> Int)
+  -> (Cell -> Bool)
+  -> AStarState
+  -> Maybe AStarState
 doAStar neighbours cost heuristic goal aStarState = trace (debug aStarState) $ case PSQ.minView $ openList aStarState of
   Nothing -> Nothing
   Just (x, _, _, _) | goal x -> Just $ aStarState { found = Just x }
   Just (x, _, _, xs) -> doAStar neighbours cost heuristic goal $ aStarState' { closedList = x:(closedList aStarState') }
     where aStarState' = foldr maybeInsert (aStarState { openList = xs }) (neighbours x)
-          maybeInsert candidate searchState = let itsCost = cost x candidate + (costs searchState) M.! x in
+          maybeInsert candidate searchState = let baseCost = (costs searchState) M.! x
+                                                  itsCost = cost x candidate + baseCost in
             if elem candidate (closedList searchState) || maybe False (< itsCost) (M.lookup candidate (costs searchState))
             then searchState
             else searchState {
               costs = M.insert candidate itsCost (costs searchState),
               back = M.insert candidate x (back searchState),
-              openList = PSQ.insert candidate (heuristic candidate) () (openList searchState)
+              openList = PSQ.insert candidate (baseCost + heuristic candidate) () (openList searchState)
               }
 
-aStar :: (Foldable f, Num cost, Ord cost, Ord state, Hashable state, Show state, Show cost)
-  => (state -> f state)
-  -> (state -> state -> cost)
-  -> (state -> cost)
-  -> (state -> Bool)
-  -> state
-  -> Maybe (cost, [state])
+aStar :: (Foldable f)
+  => (Cell -> f Cell)
+  -> (Cell -> Cell -> Int)
+  -> (Cell -> Int)
+  -> (Cell -> Bool)
+  -> Cell
+  -> Maybe (Int, [Cell])
 aStar neighbours cost heuristic goal initial = getCostAndPath <$> endState
   where endState = doAStar neighbours cost heuristic goal (initAStar initial)
-        getCostAndPath s = let path = getPath s in (sum $ map ((costs s) M.!) $ path, path)
+        getCostAndPath s = let path = getPath s in ((costs s) M.! (last path), path)
         getPath s = reverse $ takeWhile (/= initial) $ iterate ((back s) M.!) (fromJust $ found s)
 
 path :: Int -> (Int, Int) -> Maybe (Int, [(Int, Int, Int)])
 path depth target@(tx, ty) = aStar (neighboursmem depth target) moveCost heuristic goal start
   where start = (0, 0, 0)
         goal pos = pos == (tx, ty, 0)
-        heuristic (x,y,_) = x+y
+        heuristic (x,y,z) = abs (ty-y) + abs (tx-x) + abs (z*7)
 
 neighboursmem = memo3 neighbours
 
@@ -132,7 +144,7 @@ neighbours depth target cell = fromList $ filter allowed $ map (add cell) offset
         suitable coord tool = okFor tool (terrainmem depth target coord)
 
 pathCost :: Mission -> Int
-pathCost (depth, target) = fst $ fromJust $ path depth target
+pathCost (depth, target) = fst $ fromJust $ traceShowId $ path depth target
 
 day22a :: Mission :~> Int
 day22a = MkSol
