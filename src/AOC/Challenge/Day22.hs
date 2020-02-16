@@ -12,11 +12,14 @@ module AOC.Challenge.Day22 (
 
 import AOC.Prelude
 import Text.ParserCombinators.ReadP
-import Algorithm.Search
 import Data.HashSet hiding (map, filter)
+import Data.Hashable
 import Data.List
 import Data.Maybe
 import Data.MemoTrie
+
+import qualified Data.HashPSQ as PSQ
+import qualified Data.Map as M
 
 type Mission = (Int, (Int, Int))
 
@@ -63,6 +66,45 @@ okFor tool 2 = tool == -1 || tool == 0
 
 add (x1, y1, t1) (x2, y2, t2) = (x1+x2, y1+y2, t1+t2)
 
+data AStarState a c = AStarState {
+  closedList :: [a],
+  openList :: PSQ.HashPSQ a c (),
+  cost :: M.Map a c,
+  back :: M.Map a a,
+  found :: Maybe a
+}
+
+initAStar start = AStarState {
+  closedList = [start],
+  openList = PSQ.empty,
+  costs = M.empty,
+  back = M.empty,
+  found = Nothing
+}
+
+doAStar :: (Foldable f, Num cost, Ord cost, Ord state, Hashable state)
+  => (state -> f state)
+  -> (state -> state -> cost)
+  -> (state -> cost)
+  -> (state -> Bool)
+  -> AStarState state cost
+  -> Maybe AStarState
+doAStar neighbours cost heuristic goal state = case PSQ.minView $ openList state of
+  Nothing -> Nothing
+  Just (x, _, _, finished) | goal x -> finished { found = x, costs = M.insert x (cost x) (costs finished)}
+  Just (x, _, _, xs) -> undefined
+
+aStar :: (Foldable f, Num cost, Ord cost, Ord state, Hashable state)
+  => (state -> f state)
+  -> (state -> state -> cost)
+  -> (state -> cost)
+  -> (state -> Bool)
+  -> state
+  -> Maybe (cost, [state])
+aStar neighbours cost heuristic goal initial = getPath <$> endState
+  where endState = doAStar neighbours cost heuristic goal (initAStar initial)
+        getPath s = reverse $ takeWhile (/= initial) $ iterate ((back endState) !)
+
 path :: Int -> (Int, Int) -> Maybe (Int, [(Int, Int, Int)])
 path depth target@(tx, ty) = aStar (neighboursmem depth target) moveCost heuristic goal start
   where start = (0, 0, 0)
@@ -76,8 +118,8 @@ neighbours depth target cell = fromList $ filter allowed $ map (add cell) offset
   where allowed (a,b,c)= a >= 0 && b >= 0 && c >= -1 && c <= 1 && suitable (a,b) c
         suitable coord tool = okFor tool (terrainmem depth target coord)
 
-cost :: Mission -> Int
-cost (depth, target) = fst $ fromJust $ path depth target
+pathCost :: Mission -> Int
+pathCost (depth, target) = fst $ fromJust $ path depth target
 
 day22a :: Mission :~> Int
 day22a = MkSol
@@ -90,5 +132,5 @@ day22b :: Mission :~> Int
 day22b = MkSol
     { sParse = parseMaybe mission
     , sShow  = show
-    , sSolve = Just . cost
+    , sSolve = Just . pathCost
     }

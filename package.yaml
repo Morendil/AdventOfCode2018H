@@ -81,6 +81,7 @@ library:
   - extra
   - filepath
   - finite-typelits
+  - hashable
   - haskeline
   - haskell-names
   - haskell-src-exts
@@ -95,6 +96,7 @@ library:
   - parser-combinators
   - pointedlist
   - profunctors
+  - psqueues
   - search-algorithms
   - template-haskell
   - text
