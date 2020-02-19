@@ -122,17 +122,17 @@ doAStar neighbours cost heuristic goal aStarState = case PSQ.minView $ openList 
     where aStarState' = foldl' maybeInsert (aStarState { openList = xs }) candidates
           candidates = H.difference (neighbours x) (closedList aStarState)
           maybeInsert searchState candidate = let baseCost = (costs searchState) M.! x
-                                                  itsCost = cost x candidate + baseCost in
+                                                  itsCost = baseCost + cost x candidate in
             case PSQ.lookup candidate (openList searchState) of
               Nothing -> searchState {
                 costs = M.insert candidate itsCost (costs searchState),
                 back = M.insert candidate x (back searchState),
-                openList = PSQ.insert candidate (baseCost + heuristic candidate) () (openList searchState)
+                openList = PSQ.insert candidate (itsCost + heuristic candidate) () (openList searchState)
                 }
               Just _ -> if itsCost < (costs searchState) M.! candidate then searchState {
                   costs = M.insert candidate itsCost (costs searchState),
                   back = M.insert candidate x (back searchState),
-                  openList = PSQ.insert candidate (baseCost + heuristic candidate) () (openList searchState)
+                  openList = PSQ.insert candidate (itsCost + heuristic candidate) () (openList searchState)
                   }
                 else searchState
 
