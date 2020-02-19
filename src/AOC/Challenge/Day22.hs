@@ -75,6 +75,7 @@ type Cell = (Int, Int, Int)
 
 data AStarState = AStarState {
   closedList :: H.HashSet Cell,
+  countClosed :: Int,
   openList :: PSQ.HashPSQ Cell Int (),
   costs :: M.Map Cell Int,
   back :: M.Map Cell Cell,
@@ -84,6 +85,7 @@ data AStarState = AStarState {
 initAStar :: Cell -> AStarState
 initAStar start = AStarState {
   closedList = H.empty,
+  countClosed = 0,
   openList = PSQ.singleton start 0 (),
   costs = M.singleton start 0,
   back = M.empty,
@@ -98,7 +100,7 @@ xx (x, _y, _z) = x
 debug :: AStarState -> AStarState
 debug aStarState = if closedCount `mod` 1000 /= 0 then aStarState else trace debugInfo aStarState
   where debugInfo = unlines {-- $ [[disp (x,y) | x <- [0..maxx]] | y <- [0..maxy]] ++ --} [show maxx++","++show maxy, show closedCount, show (PSQ.size $ openList aStarState), show (maximum $ M.elems $ costs aStarState), show minv]
-        closedCount = (H.size $ closedList aStarState)
+        closedCount = countClosed aStarState
         cells = M.keys $ costs aStarState
         maxy = maximum $ map yy cells
         maxx = maximum $ map xx cells
@@ -116,7 +118,7 @@ doAStar :: (Cell -> H.HashSet Cell)
 doAStar neighbours cost heuristic goal aStarState = case PSQ.minView $ openList (debug aStarState) of
   Nothing -> Nothing
   Just (x, _, _, _) | goal x -> Just $ aStarState { found = Just x }
-  Just (x, _, _, xs) -> doAStar neighbours cost heuristic goal $ aStarState' { closedList = H.insert x (closedList aStarState') }
+  Just (x, _, _, xs) -> doAStar neighbours cost heuristic goal $ aStarState' { closedList = H.insert x (closedList aStarState'), countClosed = 1+(countClosed aStarState') }
     where aStarState' = foldl' maybeInsert (aStarState { openList = xs }) candidates
           candidates = H.difference (neighbours x) (closedList aStarState)
           maybeInsert searchState candidate = let baseCost = (costs searchState) M.! x
