@@ -107,8 +107,7 @@ debug aStarState = if closedCount `mod` 1000 /= 0 then aStarState else trace deb
 
 -- show (H.size $ closedList aStarState) ++ ", " ++ show (maximum $ map yy $ M.keys $ costs aStarState) ++ "," ++ show (maximum $ map xx $ M.keys $ costs aStarState) ++ ", " ++ show (maximum $ M.elems $ costs aStarState)
 
-doAStar :: (Foldable f)
-  => (Cell -> f Cell)
+doAStar :: (Cell -> H.HashSet Cell)
   -> (Cell -> Cell -> Int)
   -> (Cell -> Int)
   -> (Cell -> Bool)
@@ -118,19 +117,24 @@ doAStar neighbours cost heuristic goal aStarState = case PSQ.minView $ openList 
   Nothing -> Nothing
   Just (x, _, _, _) | goal x -> Just $ aStarState { found = Just x }
   Just (x, _, _, xs) -> doAStar neighbours cost heuristic goal $ aStarState' { closedList = H.insert x (closedList aStarState') }
-    where aStarState' = foldr maybeInsert (aStarState { openList = xs }) (neighbours x)
-          maybeInsert candidate searchState = let baseCost = (costs searchState) M.! x
+    where aStarState' = foldl' maybeInsert (aStarState { openList = xs }) candidates
+          candidates = H.difference (neighbours x) (closedList aStarState)
+          maybeInsert searchState candidate = let baseCost = (costs searchState) M.! x
                                                   itsCost = cost x candidate + baseCost in
-            if H.member candidate (closedList searchState) || maybe False (< itsCost) (M.lookup candidate (costs searchState))
-            then searchState
-            else searchState {
-              costs = M.insert candidate itsCost (costs searchState),
-              back = M.insert candidate x (back searchState),
-              openList = PSQ.insert candidate (baseCost + heuristic candidate) () (openList searchState)
-              }
+            case PSQ.lookup candidate (openList searchState) of
+              Nothing -> searchState {
+                costs = M.insert candidate itsCost (costs searchState),
+                back = M.insert candidate x (back searchState),
+                openList = PSQ.insert candidate (baseCost + heuristic candidate) () (openList searchState)
+                }
+              Just _ -> if itsCost < (costs searchState) M.! candidate then searchState {
+                  costs = M.insert candidate itsCost (costs searchState),
+                  back = M.insert candidate x (back searchState),
+                  openList = PSQ.insert candidate (baseCost + heuristic candidate) () (openList searchState)
+                  }
+                else searchState
 
-aStar :: (Foldable f)
-  => (Cell -> f Cell)
+aStar :: (Cell -> H.HashSet Cell)
   -> (Cell -> Cell -> Int)
   -> (Cell -> Int)
   -> (Cell -> Bool)
