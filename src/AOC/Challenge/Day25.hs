@@ -4,35 +4,37 @@
 -- |
 -- Module      : AOC.Challenge.Day25
 -- License     : BSD3
---
--- Stability   : experimental
--- Portability : non-portable
---
--- Day 25.  See "AOC.Solver" for the types used in this module!
---
--- After completing the challenge, it is recommended to:
---
--- *   Replace "AOC.Prelude" imports to specific modules (with explicit
---     imports) for readability.
--- *   Remove the @-Wno-unused-imports@ and @-Wno-unused-top-binds@
---     pragmas.
--- *   Replace the partial type signatures underscores in the solution
---     types @_ :~> _@ with the actual types of inputs and outputs of the
---     solution.  You can delete the type signatures completely and GHC
---     will recommend what should go in place of the underscores.
 
 module AOC.Challenge.Day25 (
-    -- day25a
+    day25a
   -- , day25b
   ) where
 
-import           AOC.Prelude
+import AOC.Prelude
 
-day25a :: _ :~> _
+type Star = [Int]
+
+constellations :: [Star] -> Int
+constellations = length . linkConstellations
+
+linkConstellations :: [Star] -> [[Star]]
+linkConstellations (x:xs) = link [] [] [x] xs
+
+link :: [[Star]] -> [Star] -> [Star] -> [Star] -> [[Star]]
+link all [] [] [] = all
+link all current [] [] = current:all
+link all current [] (x:xs) = link (current:all) [] [x] xs
+link all current (x:xs) stars = link all (x:current) (xs++candidates) stars'
+  where linkable star = distance x star <= 3
+        candidates = filter linkable stars
+        stars' = filter (not.linkable) stars
+        distance [x1,y1,z1,t1] [x2,y2,z2,t2] = (abs (x2-x1))+(abs (y2-y1))+(abs (z2-z1))+(abs (t2-t1))
+
+day25a :: [Star] :~> Int
 day25a = MkSol
-    { sParse = Just
+    { sParse = Just . mapMaybe (parseMaybe intList) . lines
     , sShow  = show
-    , sSolve = Just
+    , sSolve = Just . constellations
     }
 
 day25b :: _ :~> _

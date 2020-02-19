@@ -46,6 +46,9 @@ int' = do
 numberList :: ReadP [Integer]
 numberList = sepBy1 number comma
 
+intList :: ReadP [Int]
+intList = sepBy1 int comma
+
 parseMaybe :: ReadP a -> String -> Maybe a
 parseMaybe parser input =
     case reverse $ readP_to_S parser input of
