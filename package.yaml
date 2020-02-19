@@ -88,6 +88,7 @@ library:
   - hpack
   - linear
   - matrix
+  - maximal-cliques
   - megaparsec
   - MemoTrie
   - microlens-th
