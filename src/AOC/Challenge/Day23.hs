@@ -4,40 +4,43 @@
 -- |
 -- Module      : AOC.Challenge.Day23
 -- License     : BSD3
---
--- Stability   : experimental
--- Portability : non-portable
---
--- Day 23.  See "AOC.Solver" for the types used in this module!
---
--- After completing the challenge, it is recommended to:
---
--- *   Replace "AOC.Prelude" imports to specific modules (with explicit
---     imports) for readability.
--- *   Remove the @-Wno-unused-imports@ and @-Wno-unused-top-binds@
---     pragmas.
--- *   Replace the partial type signatures underscores in the solution
---     types @_ :~> _@ with the actual types of inputs and outputs of the
---     solution.  You can delete the type signatures completely and GHC
---     will recommend what should go in place of the underscores.
 
 module AOC.Challenge.Day23 (
-    -- day23a
-  -- , day23b
+    day23a
+  , day23b
   ) where
 
-import           AOC.Prelude
+import AOC.Prelude
+import Text.ParserCombinators.ReadP
 
-day23a :: _ :~> _
+type Bot = (Int, Int, Int, Int)
+
+triple :: ReadP (Int, Int, Int)
+triple = do
+    x <- int; comma;  y <- int;  comma ; z <- int
+    return (x, y, z)
+
+bot :: ReadP Bot
+bot = do
+    (x,y,z) <- between (string "pos=<") (string ">, r=") triple
+    r <- int
+    return (x, y, z, r)
+
+leaderBots :: [Bot] -> Int
+leaderBots bots = length $ filter (inRangeOf leader) bots
+  where leader = last $ sortOn (\(x,y,z,r) -> r) $ bots
+        inRangeOf (lx,ly,lz,lr) (botx,boty,botz,_) = ((abs (botx-lx))+(abs (boty-ly))+(abs (botz-lz))) <= lr
+
+day23a :: [Bot] :~> Int
 day23a = MkSol
-    { sParse = Just
+    { sParse = parseMaybe $ sepBy1 bot (string "\n")
     , sShow  = show
-    , sSolve = Just
+    , sSolve = Just . leaderBots
     }
 
-day23b :: _ :~> _
+day23b :: [Bot] :~> Int
 day23b = MkSol
-    { sParse = Just
+    { sParse = parseMaybe $ sepBy1 bot (string "\n")
     , sShow  = show
-    , sSolve = Just
+    , sSolve = Just . length
     }
